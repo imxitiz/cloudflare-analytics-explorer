@@ -189,11 +189,8 @@ export function TileContainer({
       dataSource?.name?.toLowerCase().includes('(dummy)');
 
     try {
-      // Check if API is configured
-      const configStatus = await apiClient.getConfigStatus().catch(() => ({ configured: false }));
-
-      if (configStatus.configured && dataSource && !isDummyDataSource) {
-        // Use real API for non-dummy data sources
+      if (dataSource && !isDummyDataSource) {
+        // Try real API for non-dummy data sources
         const params = buildQueryParams(filterValues);
         const result = await apiClient.executeQuery(tile.query, params);
 
@@ -204,7 +201,7 @@ export function TileContainer({
         // Convert string numbers to actual numbers (API returns UInt64 as strings)
         setData(convertStringNumbers(result.data));
       } else {
-        // Fall back to mock data (for dummy data sources or when API not configured)
+        // Use mock data for dummy data sources
         await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 300));
         const query = processQuery(tile.query, filterValues);
         const result = executeMockQuery(query, tile.dataSourceId);

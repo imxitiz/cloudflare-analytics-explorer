@@ -228,16 +228,4 @@ app.post("/api/query", async (c) => {
   }
 });
 
-// Get configuration status
-app.get("/api/config/status", (c) => {
-  const accountId = c.env.CF_ACCOUNT_ID;
-  const apiToken = c.env.CF_API_TOKEN;
-
-  return c.json({
-    configured: !!(accountId && apiToken),
-    hasAccountId: !!accountId,
-    hasApiToken: !!apiToken,
-  });
-});
-
 export default app;

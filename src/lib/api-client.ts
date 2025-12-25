@@ -21,12 +21,6 @@ export interface QueryResult {
   message?: string;
 }
 
-export interface ConfigStatus {
-  configured: boolean;
-  hasAccountId: boolean;
-  hasApiToken: boolean;
-}
-
 class ApiClient {
   private async request<T>(
     endpoint: string,
@@ -47,11 +41,6 @@ class ApiClient {
     }
 
     return data as T;
-  }
-
-  // Check if API is configured
-  async getConfigStatus(): Promise<ConfigStatus> {
-    return this.request<ConfigStatus>('/config/status');
   }
 
   // List all datasets from Analytics Engine

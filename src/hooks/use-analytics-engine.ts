@@ -1,21 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient, type Dataset, type DatasetColumn, type QueryResult, type ConfigStatus } from '@/lib/api-client';
-
-// Hook to check API configuration status
-export function useConfigStatus() {
-  const [status, setStatus] = useState<ConfigStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiClient.getConfigStatus()
-      .then(setStatus)
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  return { status, isLoading, error };
-}
+import { apiClient, type Dataset, type DatasetColumn, type QueryResult } from '@/lib/api-client';
 
 // Hook to fetch available datasets
 export function useDatasets() {
