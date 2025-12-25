@@ -8,6 +8,7 @@ import {
   Delete02Icon,
   Copy01Icon,
   MoreHorizontalIcon,
+  FilterIcon,
 } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ interface DashboardHeaderProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onSettings: () => void;
+  onManageFilters: () => void;
 }
 
 export function DashboardHeader({
@@ -38,6 +40,7 @@ export function DashboardHeader({
   onDuplicate,
   onDelete,
   onSettings,
+  onManageFilters,
 }: DashboardHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(dashboard.name);
@@ -111,6 +114,10 @@ export function DashboardHeader({
             <HugeiconsIcon icon={MoreHorizontalIcon} size={16} strokeWidth={2} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={onManageFilters}>
+              <HugeiconsIcon icon={FilterIcon} size={14} strokeWidth={2} />
+              <span>Manage Filters</span>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onSettings}>
               <HugeiconsIcon icon={Settings02Icon} size={14} strokeWidth={2} />
               <span>Settings</span>

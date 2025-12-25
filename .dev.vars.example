@@ -1,0 +1,13 @@
+# Cloudflare Analytics Engine Configuration
+# Copy this file to .dev.vars and fill in your values
+
+# Your Cloudflare Account ID
+# Find it at: https://dash.cloudflare.com -> Select account -> Account ID in sidebar
+CF_ACCOUNT_ID=your_account_id_here
+
+# Your Cloudflare API Token
+# Create at: https://dash.cloudflare.com/profile/api-tokens
+# Required permissions:
+#   - Account > Analytics > Read
+#   - Account > Analytics Engine > Read
+CF_API_TOKEN=your_api_token_here

@@ -2,6 +2,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { RefreshIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { DateRangeFilter } from './date-range-filter';
+import { TimeRangeFilter } from './time-range-filter';
 import { DropdownFilter } from './dropdown-filter';
 import { TextFilter } from './text-filter';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,14 @@ export function FilterBar({
           <DateRangeFilter
             key={filter.id}
             value={(value as [string, string]) || ['', '']}
+            onChange={(v) => handleFilterChange(filter.parameterName, v)}
+          />
+        );
+      case 'timeRange':
+        return (
+          <TimeRangeFilter
+            key={filter.id}
+            value={(value as string) || "'1' HOUR"}
             onChange={(v) => handleFilterChange(filter.parameterName, v)}
           />
         );

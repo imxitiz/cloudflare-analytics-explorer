@@ -79,39 +79,47 @@ export const MOCK_SCATTER_DATA = [
   { loadTime: 520, bounceRate: 62, visitors: 120 },
 ];
 
-// Stat card mock data
-export const MOCK_STAT_DATA = {
-  totalViews: 125430,
-  previousViews: 118200,
-  totalVisitors: 42850,
-  previousVisitors: 39200,
-  avgBounceRate: 38.5,
-  previousBounceRate: 42.1,
-  avgLoadTime: 1.85,
-  previousLoadTime: 2.12,
-};
+// Stat card mock data - returns array with single row for consistency
+export const MOCK_STAT_VIEWS = [{ totalViews: 125430, previousViews: 118200 }];
+export const MOCK_STAT_VISITORS = [{ totalVisitors: 42850, previousVisitors: 39200 }];
+export const MOCK_STAT_BOUNCE = [{ avgBounceRate: 38.5, previousBounceRate: 42.1 }];
+export const MOCK_STAT_LOADTIME = [{ avgLoadTime: 1.85, previousLoadTime: 2.12 }];
 
 // Function to simulate query execution with mock data
 export function executeMockQuery(query: string, _dataSourceId: string): Record<string, unknown>[] {
   const lowerQuery = query.toLowerCase();
 
-  // Match query patterns to return appropriate mock data
-  if (lowerQuery.includes('group by date') || lowerQuery.includes('by day')) {
+  // Stat card queries - check these first
+  if (lowerQuery.includes('totalviews') || (lowerQuery.includes('sum') && lowerQuery.includes('double1') && !lowerQuery.includes('group by'))) {
+    return MOCK_STAT_VIEWS;
+  }
+  if (lowerQuery.includes('totalvisitors') || (lowerQuery.includes('sum') && lowerQuery.includes('double2') && !lowerQuery.includes('group by'))) {
+    return MOCK_STAT_VISITORS;
+  }
+  if (lowerQuery.includes('avgbouncerate') || (lowerQuery.includes('avg') && lowerQuery.includes('double3') && !lowerQuery.includes('group by'))) {
+    return MOCK_STAT_BOUNCE;
+  }
+  if (lowerQuery.includes('avgloadtime') || (lowerQuery.includes('avg') && lowerQuery.includes('double4') && !lowerQuery.includes('group by'))) {
+    return MOCK_STAT_LOADTIME;
+  }
+
+  // Chart queries
+  if (lowerQuery.includes('group by date') || lowerQuery.includes('by day') || lowerQuery.includes('todate')) {
     return MOCK_TIMESERIES_DATA;
   }
-  if (lowerQuery.includes('group by hour') || lowerQuery.includes('by hour')) {
+  if (lowerQuery.includes('group by hour') || lowerQuery.includes('by hour') || lowerQuery.includes('tostartofhour')) {
     return MOCK_HOURLY_DATA;
   }
-  if (lowerQuery.includes('group by country') || lowerQuery.includes('by country')) {
+  if (lowerQuery.includes('group by country') || lowerQuery.includes('by country') || lowerQuery.includes('blob2 as country')) {
     return MOCK_COUNTRY_DATA;
   }
-  if (lowerQuery.includes('group by device') || lowerQuery.includes('by device')) {
+  if (lowerQuery.includes('group by device') || lowerQuery.includes('by device') || lowerQuery.includes('blob3 as device')) {
     return MOCK_DEVICE_DATA;
   }
-  if (lowerQuery.includes('top pages') || lowerQuery.includes('group by path')) {
+  if (lowerQuery.includes('top pages') || lowerQuery.includes('group by path') || lowerQuery.includes('blob1 as path')) {
     return MOCK_TOP_PAGES_DATA;
   }
-  if (lowerQuery.includes('endpoint') || lowerQuery.includes('api')) {
+  if (lowerQuery.includes('endpoint') || lowerQuery.includes('api_metrics')) {
     return MOCK_API_ENDPOINTS_DATA;
   }
   if (lowerQuery.includes('error')) {
@@ -125,7 +133,19 @@ export function executeMockQuery(query: string, _dataSourceId: string): Record<s
   return MOCK_TIMESERIES_DATA;
 }
 
-// Helper to get a single stat value
-export function getMockStatValue(key: keyof typeof MOCK_STAT_DATA): number {
-  return MOCK_STAT_DATA[key];
+// Stat data object for direct key access
+export const MOCK_STAT_DATA = {
+  totalViews: 125430,
+  previousViews: 118200,
+  totalVisitors: 42850,
+  previousVisitors: 39200,
+  avgBounceRate: 38.5,
+  previousBounceRate: 42.1,
+  avgLoadTime: 1.85,
+  previousLoadTime: 2.12,
+};
+
+// Legacy helper - kept for compatibility
+export function getMockStatValue(key: string): number {
+  return MOCK_STAT_DATA[key as keyof typeof MOCK_STAT_DATA] || 0;
 }

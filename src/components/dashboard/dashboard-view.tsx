@@ -16,6 +16,7 @@ interface DashboardViewProps {
   onTileEdit: (tileId: string) => void;
   onTileDelete: (tileId: string) => void;
   onTilePositionChange: (tileId: string, position: TilePosition) => void;
+  onManageFilters: () => void;
 }
 
 export function DashboardView({
@@ -28,6 +29,7 @@ export function DashboardView({
   onTileEdit,
   onTileDelete,
   onTilePositionChange,
+  onManageFilters,
 }: DashboardViewProps) {
   // Initialize filter values from dashboard defaults
   const [filterValues, setFilterValues] = useState<FilterValues>(() => {
@@ -35,6 +37,9 @@ export function DashboardView({
     dashboard.filters.forEach((filter) => {
       if (filter.defaultValue !== undefined) {
         initial[filter.parameterName] = filter.defaultValue;
+      } else if (filter.type === 'timeRange') {
+        // Fallback default for timeRange filters
+        initial[filter.parameterName] = "'1' HOUR";
       }
     });
     return initial;
@@ -62,6 +67,9 @@ export function DashboardView({
     dashboard.filters.forEach((filter) => {
       if (filter.defaultValue !== undefined) {
         initial[filter.parameterName] = filter.defaultValue;
+      } else if (filter.type === 'timeRange') {
+        // Fallback default for timeRange filters
+        initial[filter.parameterName] = "'1' HOUR";
       }
     });
     setFilterValues(initial);
@@ -99,6 +107,7 @@ export function DashboardView({
         onDuplicate={onDashboardDuplicate}
         onDelete={onDashboardDelete}
         onSettings={() => {}}
+        onManageFilters={onManageFilters}
       />
 
       {dashboard.filters.length > 0 && (

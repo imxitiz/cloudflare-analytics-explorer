@@ -13,6 +13,7 @@ interface AppLayoutProps {
   onDataSourceSelect: (id: string) => void;
   onDataSourceCreate: () => void;
   onDataSourceDelete: (id: string) => void;
+  onDocsOpen: () => void;
 }
 
 export function AppLayout({
@@ -26,6 +27,7 @@ export function AppLayout({
   onDataSourceSelect,
   onDataSourceCreate,
   onDataSourceDelete,
+  onDocsOpen,
 }: AppLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -43,6 +45,7 @@ export function AppLayout({
         onDataSourceDelete={onDataSourceDelete}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onDocsOpen={onDocsOpen}
       />
       <main className="flex-1 overflow-auto">
         {children}

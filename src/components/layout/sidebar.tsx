@@ -7,6 +7,7 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowDown01Icon,
+  BookOpen01Icon,
 } from '@hugeicons/core-free-icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ interface SidebarProps {
   onDataSourceDelete: (id: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onDocsOpen: () => void;
 }
 
 export function Sidebar({
@@ -39,6 +41,7 @@ export function Sidebar({
   onDataSourceDelete,
   isCollapsed,
   onToggleCollapse,
+  onDocsOpen,
 }: SidebarProps) {
   const [dashboardsExpanded, setDashboardsExpanded] = useState(true);
   const [dataSourcesExpanded, setDataSourcesExpanded] = useState(true);
@@ -171,13 +174,23 @@ export function Sidebar({
       </nav>
 
       {/* Footer */}
-      {!isCollapsed && (
-        <div className="border-t p-3">
-          <p className="text-xs text-muted-foreground">
+      <div className="border-t p-2">
+        <button
+          onClick={onDocsOpen}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground',
+            isCollapsed && 'justify-center'
+          )}
+        >
+          <HugeiconsIcon icon={BookOpen01Icon} size={16} strokeWidth={2} />
+          {!isCollapsed && <span>Documentation</span>}
+        </button>
+        {!isCollapsed && (
+          <p className="mt-2 px-2 text-xs text-muted-foreground">
             AE Explorer v0.1.0
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

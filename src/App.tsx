@@ -6,9 +6,12 @@ import { CreateDashboardModal } from '@/components/modals/create-dashboard-modal
 import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import { DataSourceModal } from '@/components/modals/data-source-modal';
 import { TileEditorModal } from '@/components/modals/tile-editor-modal';
+import { FilterConfigModal } from '@/components/modals/filter-config-modal';
+import { WikiPage } from '@/components/wiki/wiki-page';
+import { LandingPage } from '@/components/landing/landing-page';
 import { useDashboards } from '@/hooks/use-dashboards';
 import { useDataSources } from '@/hooks/use-data-sources';
-import type { Tile, ColumnMapping, TilePosition } from '@/types/dashboard';
+import type { Tile, ColumnMapping, TilePosition, DashboardFilter } from '@/types/dashboard';
 
 type ViewMode = 'dashboard' | 'dataSources';
 
@@ -32,6 +35,11 @@ interface TileModalState {
 }
 
 export function App() {
+  // Landing page state - check localStorage to see if user has entered the app before
+  const [showLanding, setShowLanding] = useState(() => {
+    return !localStorage.getItem('ae-explorer-entered');
+  });
+
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<string | null>(null);
@@ -54,6 +62,8 @@ export function App() {
     mode: 'create',
     tileId: null,
   });
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [wikiOpen, setWikiOpen] = useState(false);
 
   // Hooks
   const {
@@ -78,6 +88,7 @@ export function App() {
     duplicateDataSource,
     getDataSource,
   } = useDataSources();
+
 
   // Dashboard handlers
   const handleDashboardSelect = useCallback((id: string) => {
@@ -109,6 +120,19 @@ export function App() {
       duplicateDashboard(activeDashboardId);
     }
   }, [activeDashboardId, duplicateDashboard]);
+
+  const handleManageFilters = useCallback(() => {
+    setFilterModalOpen(true);
+  }, []);
+
+  const handleFiltersSave = useCallback(
+    (filters: DashboardFilter[]) => {
+      if (activeDashboardId) {
+        updateDashboard(activeDashboardId, { filters });
+      }
+    },
+    [activeDashboardId, updateDashboard]
+  );
 
   // Data source handlers
   const handleDataSourceSelect = useCallback((id: string) => {
@@ -220,6 +244,17 @@ export function App() {
     ? getDataSource(dataSourceModal.id)
     : null;
 
+  // Handle entering the app from landing page
+  const handleGetStarted = useCallback(() => {
+    localStorage.setItem('ae-explorer-entered', 'true');
+    setShowLanding(false);
+  }, []);
+
+  // Show landing page if user hasn't entered yet
+  if (showLanding) {
+    return <LandingPage onGetStarted={handleGetStarted} />;
+  }
+
   return (
     <>
       <AppLayout
@@ -232,6 +267,7 @@ export function App() {
         onDataSourceSelect={handleDataSourceSelect}
         onDataSourceCreate={handleDataSourceCreate}
         onDataSourceDelete={handleDataSourceDelete}
+        onDocsOpen={() => setWikiOpen(true)}
       >
         {viewMode === 'dashboard' && activeDashboard ? (
           <DashboardView
@@ -244,6 +280,7 @@ export function App() {
             onTileEdit={handleTileEdit}
             onTileDelete={handleTileDelete}
             onTilePositionChange={handleTilePositionChange}
+            onManageFilters={handleManageFilters}
           />
         ) : viewMode === 'dataSources' ? (
           <DataSourceList
@@ -292,8 +329,19 @@ export function App() {
         onSave={handleTileSave}
         tile={currentTile}
         dataSources={dataSources}
+        filters={activeDashboard?.filters || []}
         mode={tileModal.mode}
       />
+
+      <FilterConfigModal
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        filters={activeDashboard?.filters || []}
+        onSave={handleFiltersSave}
+      />
+
+      {/* Wiki/Documentation */}
+      {wikiOpen && <WikiPage onClose={() => setWikiOpen(false)} />}
     </>
   );
 }

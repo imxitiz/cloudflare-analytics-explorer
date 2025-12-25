@@ -81,12 +81,25 @@ export interface Tile {
 // FILTER TYPES
 // ============================================
 
-export type FilterType = 'dateRange' | 'dropdown' | 'text';
+export type FilterType = 'dateRange' | 'timeRange' | 'dropdown' | 'text';
 
 export interface FilterOption {
   label: string;
   value: string;
 }
+
+// Preset time range options for quick selection
+// Values are formatted for Analytics Engine SQL: INTERVAL '15' MINUTE
+export const TIME_RANGE_PRESETS: FilterOption[] = [
+  { label: 'Last 15 minutes', value: "'15' MINUTE" },
+  { label: 'Last 30 minutes', value: "'30' MINUTE" },
+  { label: 'Last 1 hour', value: "'1' HOUR" },
+  { label: 'Last 6 hours', value: "'6' HOUR" },
+  { label: 'Last 12 hours', value: "'12' HOUR" },
+  { label: 'Last 24 hours', value: "'24' HOUR" },
+  { label: 'Last 7 days', value: "'7' DAY" },
+  { label: 'Last 30 days', value: "'30' DAY" },
+];
 
 export interface DashboardFilter {
   id: string;

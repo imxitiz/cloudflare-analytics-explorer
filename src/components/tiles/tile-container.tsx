@@ -1,16 +1,125 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TileHeader } from './tile-header';
 import { ChartTile } from './chart-tile';
 import { TableTile } from './table-tile';
 import { StatCardTile } from './stat-card-tile';
+import { apiClient } from '@/lib/api-client';
 import { executeMockQuery } from '@/data/mock-query-results';
 import { cn } from '@/lib/utils';
 import type { Tile, DataSource, FilterValues } from '@/types/dashboard';
 
+/**
+ * Convert string numbers to actual numbers.
+ * Analytics Engine API returns UInt64 values as strings to avoid JS precision issues.
+ */
+function convertStringNumbers(data: Record<string, unknown>[]): Record<string, unknown>[] {
+  if (!data || data.length === 0) return data;
+
+  return data.map(row => {
+    const newRow: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      // Convert string numbers to actual numbers
+      if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) {
+        const num = parseFloat(value);
+        // Only convert if it's a valid number and not too large for safe integer
+        newRow[key] = !isNaN(num) ? num : value;
+      } else {
+        newRow[key] = value;
+      }
+    }
+    return newRow;
+  });
+}
+
+/**
+ * Pivot data from long format to wide format for multi-series charts.
+ *
+ * Input (long format with "series" column):
+ * [
+ *   { time: '2024-12-03', value: 100, series: 'type_a' },
+ *   { time: '2024-12-03', value: 50, series: 'type_b' },
+ *   { time: '2024-12-04', value: 120, series: 'type_a' },
+ * ]
+ *
+ * Output (wide format):
+ * [
+ *   { time: '2024-12-03', type_a: 100, type_b: 50 },
+ *   { time: '2024-12-04', type_a: 120, type_b: null },
+ * ]
+ */
+function pivotSeriesData(data: Record<string, unknown>[]): Record<string, unknown>[] {
+  if (!data || data.length === 0) return data;
+
+  // Check if data has a 'series' column
+  const firstRow = data[0];
+  const keys = Object.keys(firstRow);
+
+  if (!keys.includes('series')) {
+    return data; // No series column, return as-is
+  }
+
+  // Find the time/x-axis key (usually 'time', 'date', or first column)
+  const xKey = keys.find(k => k === 'time' || k === 'date') || keys[0];
+
+  // Find the value key (usually 'value' or first numeric column)
+  const valueKey = keys.find(k => k === 'value') ||
+    keys.find(k => typeof firstRow[k] === 'number' && k !== 'series') ||
+    'value';
+
+  // Get unique series values
+  const seriesValues = [...new Set(data.map(row => String(row.series)))];
+
+  // Get unique x-axis values
+  const xValues = [...new Set(data.map(row => row[xKey]))];
+
+  // Create pivoted data
+  const pivotedMap = new Map<unknown, Record<string, unknown>>();
+
+  // Initialize with all x values
+  xValues.forEach(xVal => {
+    const row: Record<string, unknown> = { [xKey]: xVal };
+    // Initialize all series to null
+    seriesValues.forEach(s => {
+      row[s] = null;
+    });
+    pivotedMap.set(xVal, row);
+  });
+
+  // Fill in values
+  data.forEach(row => {
+    const xVal = row[xKey];
+    const seriesVal = String(row.series);
+    const value = row[valueKey];
+
+    const pivotedRow = pivotedMap.get(xVal);
+    if (pivotedRow) {
+      pivotedRow[seriesVal] = value;
+    }
+  });
+
+  // Convert to array and sort by x-axis if it looks like a date/time
+  const result = Array.from(pivotedMap.values());
+
+  // Try to sort by the x-axis column
+  result.sort((a, b) => {
+    const aVal = a[xKey];
+    const bVal = b[xKey];
+    if (aVal instanceof Date && bVal instanceof Date) {
+      return aVal.getTime() - bVal.getTime();
+    }
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return aVal.localeCompare(bVal);
+    }
+    return 0;
+  });
+
+  return result;
+}
+
 interface TileContainerProps {
   tile: Tile;
-  dataSource?: DataSource; // Reserved for future use with real data fetching
+  dataSource?: DataSource;
   filterValues: FilterValues;
   onEdit: () => void;
   onDelete: () => void;
@@ -18,64 +127,124 @@ interface TileContainerProps {
 
 export function TileContainer({
   tile,
-  dataSource: _dataSource,
+  dataSource,
   filterValues,
   onEdit,
   onDelete,
 }: TileContainerProps) {
-  void _dataSource; // Reserved for future backend integration
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Simulate data fetching
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
+  // Convert filter values to params for API
+  const buildQueryParams = useCallback((values: FilterValues): Record<string, string | number> => {
+    const params: Record<string, string | number> = {};
+    Object.entries(values).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        params[`${key}_start`] = value[0];
+        params[`${key}_end`] = value[1];
+      } else {
+        params[key] = value;
+      }
+    });
+    return params;
+  }, []);
 
-      try {
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 500));
+  // Process query with filter substitution for display
+  const processQuery = useCallback((query: string, values: FilterValues): string => {
+    let processed = query;
+    Object.entries(values).forEach(([param, value]) => {
+      // Handle ${param} style placeholders (legacy)
+      const legacyPlaceholder = `\${${param}}`;
+      // Handle {{param}} style placeholders (new)
+      const newPlaceholder = `{{${param}}}`;
 
-        // Substitute filter values in query (mock implementation)
-        let query = tile.query;
-        Object.entries(filterValues).forEach(([param, value]) => {
-          const placeholder = `\${${param}}`;
-          if (Array.isArray(value)) {
-            query = query.replace(placeholder, `'${value[0]}' AND '${value[1]}'`);
-          } else {
-            query = query.replace(placeholder, `'${value}'`);
-          }
-        });
+      if (Array.isArray(value)) {
+        processed = processed
+          .replace(legacyPlaceholder, `'${value[0]}' AND '${value[1]}'`)
+          .replace(newPlaceholder, `'${value[0]}' AND '${value[1]}'`)
+          .replace(`{{${param}_start}}`, `'${value[0]}'`)
+          .replace(`{{${param}_end}}`, `'${value[1]}'`);
+      } else {
+        // Check if this is an INTERVAL value (e.g., "'15' MINUTE", "'7' DAY")
+        // These already have proper formatting and shouldn't be wrapped in quotes
+        const isIntervalValue = /^'\d+'\s+(SECOND|MINUTE|HOUR|DAY|WEEK|MONTH|YEAR)$/i.test(value);
+        const escapedValue = isIntervalValue ? value : `'${value}'`;
 
-        // Execute mock query
+        processed = processed
+          .replace(legacyPlaceholder, escapedValue)
+          .replace(newPlaceholder, escapedValue);
+      }
+    });
+    return processed;
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    // Check if this is a dummy/mock data source (always use mock data for these)
+    const isDummyDataSource = tile.dataSourceId.startsWith('ds-dummy') ||
+      dataSource?.name?.toLowerCase().includes('[dummy]') ||
+      dataSource?.name?.toLowerCase().includes('(dummy)');
+
+    try {
+      // Check if API is configured
+      const configStatus = await apiClient.getConfigStatus().catch(() => ({ configured: false }));
+
+      if (configStatus.configured && dataSource && !isDummyDataSource) {
+        // Use real API for non-dummy data sources
+        const params = buildQueryParams(filterValues);
+        const result = await apiClient.executeQuery(tile.query, params);
+
+        if (result.error) {
+          throw new Error(result.message || result.error);
+        }
+
+        // Convert string numbers to actual numbers (API returns UInt64 as strings)
+        setData(convertStringNumbers(result.data));
+      } else {
+        // Fall back to mock data (for dummy data sources or when API not configured)
+        await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 300));
+        const query = processQuery(tile.query, filterValues);
         const result = executeMockQuery(query, tile.dataSourceId);
         setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tile.query, tile.dataSourceId, filterValues, dataSource, buildQueryParams, processQuery]);
 
+  // Fetch data on mount and when dependencies change
+  useEffect(() => {
     fetchData();
-  }, [tile.query, tile.dataSourceId, filterValues]);
+  }, [fetchData]);
+
+  // Auto-refresh if configured
+  useEffect(() => {
+    if (!tile.refreshInterval || tile.refreshInterval <= 0) return;
+
+    const interval = setInterval(fetchData, tile.refreshInterval * 1000);
+    return () => clearInterval(interval);
+  }, [tile.refreshInterval, fetchData]);
 
   const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const result = executeMockQuery(tile.query, tile.dataSourceId);
-      setData(result);
-      setIsLoading(false);
-    }, 500);
+    fetchData();
   };
 
   const renderContent = () => {
     if (error) {
       return (
-        <div className="flex h-full items-center justify-center p-4 text-sm text-destructive">
-          {error}
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
+          <span className="text-sm text-destructive">{error}</span>
+          <button
+            onClick={handleRefresh}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Retry
+          </button>
         </div>
       );
     }
@@ -91,10 +260,12 @@ export function TileContainer({
       case 'table':
         return <TableTile data={data} />;
       default:
+        // Pivot data if it contains a 'series' column for multi-line charts
+        const chartData = pivotSeriesData(data);
         return (
           <ChartTile
             config={tile.chartConfig}
-            data={data}
+            data={chartData}
           />
         );
     }
