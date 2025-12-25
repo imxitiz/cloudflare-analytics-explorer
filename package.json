@@ -1,7 +1,28 @@
 {
   "name": "cloudflare-analytics-explorer",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A visual dashboard builder for exploring and visualizing data from Cloudflare Analytics Engine. Build custom dashboards with charts, tables, and stat cards using SQL queries.",
+  "author": "Rohan Prasad <rohanprasadofficial@gmail.com> (https://github.com/rohanprasadofficial)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rohanprasadofficial/visual-ae-cloudflare.git"
+  },
+  "homepage": "https://github.com/rohanprasadofficial/visual-ae-cloudflare#readme",
+  "bugs": {
+    "url": "https://github.com/rohanprasadofficial/visual-ae-cloudflare/issues"
+  },
+  "keywords": [
+    "cloudflare",
+    "analytics-engine",
+    "dashboard",
+    "visualization",
+    "cloudflare-workers",
+    "react",
+    "hono",
+    "recharts",
+    "sql"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
