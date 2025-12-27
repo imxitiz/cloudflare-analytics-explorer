@@ -63,4 +63,32 @@ export const STORAGE_KEYS = {
   activeDashboard: 'analytics-explorer-active-dashboard',
   sidebarState: 'analytics-explorer-sidebar-state',
   filterValues: 'analytics-explorer-filter-values',
+  apiCredentials: 'analytics-explorer-api-credentials',
 } as const;
+
+// API Credentials type
+export interface ApiCredentials {
+  accountId: string;
+  apiToken: string;
+}
+
+// Hook specifically for API credentials with helper methods
+export function useApiCredentials() {
+  const [credentials, setCredentials] = useLocalStorage<ApiCredentials | null>(
+    STORAGE_KEYS.apiCredentials,
+    null
+  );
+
+  const hasCredentials = Boolean(credentials?.accountId && credentials?.apiToken);
+
+  const clearCredentials = useCallback(() => {
+    setCredentials(null);
+  }, [setCredentials]);
+
+  return {
+    credentials,
+    setCredentials,
+    hasCredentials,
+    clearCredentials,
+  };
+}

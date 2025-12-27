@@ -8,8 +8,10 @@ import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import { DataSourceModal } from '@/components/modals/data-source-modal';
 import { TileEditorModal } from '@/components/modals/tile-editor-modal';
 import { FilterConfigModal } from '@/components/modals/filter-config-modal';
+import { SettingsModal } from '@/components/modals/settings-modal';
 import { useDashboards } from '@/hooks/use-dashboards';
 import { useDataSources } from '@/hooks/use-data-sources';
+import { useApiCredentials } from '@/hooks/use-local-storage';
 import type { Tile, ColumnMapping, TilePosition, DashboardFilter } from '@/types/dashboard';
 
 type ViewMode = 'dashboard' | 'dataSources';
@@ -59,8 +61,11 @@ export function ExplorerPage() {
     tileId: null,
   });
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // Hooks
+  const { credentials, setCredentials, hasCredentials, clearCredentials } = useApiCredentials();
+
   const {
     dashboards,
     activeDashboard,
@@ -251,6 +256,8 @@ export function ExplorerPage() {
         onDataSourceCreate={handleDataSourceCreate}
         onDataSourceDelete={handleDataSourceDelete}
         onDocsOpen={() => navigate('/wiki')}
+        onSettingsOpen={() => setSettingsModalOpen(true)}
+        hasApiCredentials={hasCredentials}
       >
         {viewMode === 'dashboard' && activeDashboard ? (
           <DashboardView
@@ -321,6 +328,14 @@ export function ExplorerPage() {
         onClose={() => setFilterModalOpen(false)}
         filters={activeDashboard?.filters || []}
         onSave={handleFiltersSave}
+      />
+
+      <SettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        credentials={credentials}
+        onSave={setCredentials}
+        onClear={clearCredentials}
       />
     </>
   );

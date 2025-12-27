@@ -14,6 +14,8 @@ interface AppLayoutProps {
   onDataSourceCreate: () => void;
   onDataSourceDelete: (id: string) => void;
   onDocsOpen: () => void;
+  onSettingsOpen: () => void;
+  hasApiCredentials: boolean;
 }
 
 export function AppLayout({
@@ -28,6 +30,8 @@ export function AppLayout({
   onDataSourceCreate,
   onDataSourceDelete,
   onDocsOpen,
+  onSettingsOpen,
+  hasApiCredentials,
 }: AppLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -46,6 +50,8 @@ export function AppLayout({
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
         onDocsOpen={onDocsOpen}
+        onSettingsOpen={onSettingsOpen}
+        hasApiCredentials={hasApiCredentials}
       />
       <main className="flex-1 overflow-auto">
         {children}

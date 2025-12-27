@@ -30,6 +30,7 @@ export const WIKI_SECTIONS: WikiSection[] = [
       { id: 'prerequisites', title: 'Prerequisites' },
       { id: 'credentials', title: 'Cloudflare Credentials' },
       { id: 'configuration', title: 'Configuration' },
+      { id: 'local-api-keys', title: 'Local API Keys' },
     ],
   },
   {

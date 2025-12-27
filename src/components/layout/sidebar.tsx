@@ -8,6 +8,7 @@ import {
   ArrowRight01Icon,
   ArrowDown01Icon,
   BookOpen01Icon,
+  Settings02Icon,
 } from '@hugeicons/core-free-icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onDocsOpen: () => void;
+  onSettingsOpen: () => void;
+  hasApiCredentials: boolean;
 }
 
 export function Sidebar({
@@ -42,6 +45,8 @@ export function Sidebar({
   isCollapsed,
   onToggleCollapse,
   onDocsOpen,
+  onSettingsOpen,
+  hasApiCredentials,
 }: SidebarProps) {
   const [dashboardsExpanded, setDashboardsExpanded] = useState(true);
   const [dataSourcesExpanded, setDataSourcesExpanded] = useState(true);
@@ -175,6 +180,30 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="border-t p-2">
+        <button
+          onClick={onSettingsOpen}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground',
+            isCollapsed && 'justify-center'
+          )}
+        >
+          <div className="relative">
+            <HugeiconsIcon icon={Settings02Icon} size={16} strokeWidth={2} />
+            {hasApiCredentials && (
+              <span className="absolute -right-1 -top-1 size-2 rounded-full bg-green-500" />
+            )}
+          </div>
+          {!isCollapsed && (
+            <span className="flex items-center gap-2">
+              Settings
+              {hasApiCredentials && (
+                <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                  API Key Set
+                </span>
+              )}
+            </span>
+          )}
+        </button>
         <button
           onClick={onDocsOpen}
           className={cn(

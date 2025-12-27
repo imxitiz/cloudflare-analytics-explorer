@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type { Context } from "hono";
 
-// Environment bindings
+// Environment bindings (optional - credentials can come from headers instead)
 interface AppEnv {
-  CF_ACCOUNT_ID: string;
-  CF_API_TOKEN: string;
+  CF_ACCOUNT_ID?: string;
+  CF_API_TOKEN?: string;
 }
 
 const app = new Hono<{ Bindings: AppEnv }>();
@@ -12,18 +13,45 @@ const app = new Hono<{ Bindings: AppEnv }>();
 // Enable CORS for local development
 app.use("/api/*", cors());
 
+// Helper to get credentials from headers or fallback to environment
+function getCredentials(c: Context<{ Bindings: AppEnv }>): { accountId: string | null; apiToken: string | null; source: 'headers' | 'env' | 'none' } {
+  // First, check for credentials in headers (from browser localStorage)
+  const headerAccountId = c.req.header("X-CF-Account-ID");
+  const headerApiToken = c.req.header("X-CF-API-Token");
+
+  if (headerAccountId && headerApiToken) {
+    return { accountId: headerAccountId, apiToken: headerApiToken, source: 'headers' };
+  }
+
+  // Fall back to environment variables
+  const envAccountId = c.env.CF_ACCOUNT_ID;
+  const envApiToken = c.env.CF_API_TOKEN;
+
+  if (envAccountId && envApiToken) {
+    return { accountId: envAccountId, apiToken: envApiToken, source: 'env' };
+  }
+
+  return { accountId: null, apiToken: null, source: 'none' };
+}
+
 // Health check
-app.get("/api/health", (c) => c.json({ status: "ok" }));
+app.get("/api/health", (c) => {
+  const { source } = getCredentials(c);
+  return c.json({
+    status: "ok",
+    credentialsSource: source,
+    hasCredentials: source !== 'none'
+  });
+});
 
 // List available datasets from Analytics Engine
 app.get("/api/datasets", async (c) => {
-  const accountId = c.env.CF_ACCOUNT_ID;
-  const apiToken = c.env.CF_API_TOKEN;
+  const { accountId, apiToken } = getCredentials(c);
 
   if (!accountId || !apiToken) {
     return c.json({
       error: "Missing configuration",
-      message: "CF_ACCOUNT_ID and CF_API_TOKEN must be configured",
+      message: "No API credentials found. Please configure your Cloudflare API credentials in Settings, or set CF_ACCOUNT_ID and CF_API_TOKEN environment variables.",
       datasets: []
     }, 400);
   }
@@ -75,13 +103,13 @@ app.get("/api/datasets", async (c) => {
 
 // Get dataset schema (columns) by running a sample query
 app.get("/api/datasets/:datasetId/schema", async (c) => {
-  const accountId = c.env.CF_ACCOUNT_ID;
-  const apiToken = c.env.CF_API_TOKEN;
+  const { accountId, apiToken } = getCredentials(c);
   const datasetId = c.req.param("datasetId");
 
   if (!accountId || !apiToken) {
     return c.json({
       error: "Missing configuration",
+      message: "No API credentials found. Please configure your Cloudflare API credentials in Settings.",
       columns: []
     }, 400);
   }
@@ -135,13 +163,12 @@ app.get("/api/datasets/:datasetId/schema", async (c) => {
 
 // Execute SQL query against Analytics Engine
 app.post("/api/query", async (c) => {
-  const accountId = c.env.CF_ACCOUNT_ID;
-  const apiToken = c.env.CF_API_TOKEN;
+  const { accountId, apiToken } = getCredentials(c);
 
   if (!accountId || !apiToken) {
     return c.json({
       error: "Missing configuration",
-      message: "CF_ACCOUNT_ID and CF_API_TOKEN must be configured",
+      message: "No API credentials found. Please configure your Cloudflare API credentials in Settings, or set CF_ACCOUNT_ID and CF_API_TOKEN environment variables.",
       data: [],
       meta: null
     }, 400);

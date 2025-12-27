@@ -121,6 +121,7 @@ export function WikiContent({ activeSection }: { activeSection: string }) {
     'prerequisites': <PrerequisitesSection />,
     'credentials': <CredentialsSection />,
     'configuration': <ConfigurationSection />,
+    'local-api-keys': <LocalApiKeysSection />,
 
     // Concepts
     'concepts': <ConceptsSection />,
@@ -301,6 +302,85 @@ CF_API_TOKEN=your_api_token_here`}</CodeBlock>
 
 npx wrangler secret put CF_API_TOKEN
 # Enter your API token when prompted`}</CodeBlock>
+    </Section>
+  );
+}
+
+function LocalApiKeysSection() {
+  return (
+    <Section id="local-api-keys">
+      <H1>Local API Keys</H1>
+      <P>
+        Store your Cloudflare API credentials locally in your browser instead of deploying them
+        with the worker. This allows you to deploy the app publicly while keeping your data private.
+      </P>
+
+      <Callout type="tip">
+        <strong>Why use local API keys?</strong>
+        <List items={[
+          'Deploy the app without exposing your Cloudflare credentials',
+          'Each user can use their own API keys',
+          'Credentials never leave your browser - they are sent directly to Cloudflare',
+          'Share the deployed app URL without worrying about data access',
+        ]} />
+      </Callout>
+
+      <H2>Setting Up Local API Keys</H2>
+      <Steps items={[
+        { title: 'Open Settings', content: 'Click the "Settings" button in the sidebar footer' },
+        { title: 'Enter Account ID', content: 'Paste your Cloudflare Account ID' },
+        { title: 'Enter API Token', content: 'Paste your Cloudflare API Token with Analytics Engine read permissions' },
+        { title: 'Save', content: 'Click Save to store credentials in your browser' },
+      ]} />
+
+      <H2>How It Works</H2>
+      <P>
+        When you configure local API keys, they are stored in your browser's localStorage. Each API
+        request includes these credentials in headers, which the worker uses to authenticate with
+        Cloudflare's API.
+      </P>
+
+      <H3>Credential Priority</H3>
+      <Table
+        headers={['Priority', 'Source', 'Description']}
+        rows={[
+          ['1 (Highest)', 'Browser localStorage', 'Credentials from Settings modal'],
+          ['2', 'Worker environment', 'Secrets set via wrangler secret put'],
+        ]}
+      />
+
+      <P>
+        Local API keys (from browser) always take precedence over worker environment secrets.
+        This means you can deploy the worker without any secrets, and users will need to configure
+        their own API keys in Settings.
+      </P>
+
+      <H2>Deploying Without Secrets</H2>
+      <P>
+        You can deploy the app without setting any Cloudflare secrets. Users who access the app
+        will see a "Missing configuration" error until they configure their API keys in Settings.
+      </P>
+      <CodeBlock title="Deploy without secrets">{`# Just deploy - no secrets needed
+pnpm run deploy`}</CodeBlock>
+
+      <Callout type="info">
+        When a user has local API keys configured, a green "API Key Set" badge appears next to
+        the Settings button in the sidebar.
+      </Callout>
+
+      <H2>Security Considerations</H2>
+      <List items={[
+        'Credentials are stored in localStorage (browser-local, not synced)',
+        'They are transmitted over HTTPS to the worker',
+        'The worker forwards them to Cloudflare API - it does not store them',
+        'Clear your credentials using the "Clear" button in Settings',
+        'Use private/incognito mode for temporary access',
+      ]} />
+
+      <Callout type="warning">
+        Anyone with access to your browser can see stored API credentials in developer tools.
+        Only use local API keys on trusted devices.
+      </Callout>
     </Section>
   );
 }
@@ -1138,6 +1218,30 @@ function CloudflareWorkersSection() {
     <Section id="cloudflare-workers">
       <H1>Deploy to Cloudflare Workers</H1>
 
+      <P>You have two options for managing API credentials when deploying:</P>
+
+      <H2>Option 1: Use Local API Keys (Recommended)</H2>
+      <P>
+        Deploy without secrets and let each user configure their own API keys in the browser.
+        This is the most secure option for public deployments.
+      </P>
+      <CodeBlock title="Deploy without secrets">{`# Just deploy - no secrets needed
+pnpm run deploy`}</CodeBlock>
+      <P>
+        Users will configure their credentials via Settings after accessing the app.
+        See <strong>Local API Keys</strong> in the Getting Started section for details.
+      </P>
+
+      <Callout type="tip">
+        This approach is ideal when sharing the app with others - each user brings their own
+        Cloudflare credentials and only sees their own data.
+      </Callout>
+
+      <H2>Option 2: Use Worker Secrets</H2>
+      <P>
+        Set credentials as worker secrets. Anyone who accesses the deployed app will use these
+        shared credentials.
+      </P>
       <Steps items={[
         {
           title: 'Set secrets',
@@ -1152,6 +1256,13 @@ npx wrangler secret put CF_API_TOKEN`}</CodeBlock>
         },
       ]} />
 
+      <Callout type="warning">
+        <strong>Security Warning:</strong> When using worker secrets, anyone with access to
+        the deployed app URL can query your Analytics Engine data. Only use this option for
+        private/internal deployments.
+      </Callout>
+
+      <H2>Deployment URL</H2>
       <P>Your app will be available at <Code>https://cloudflare-analytics-explorer.&lt;your-subdomain&gt;.workers.dev</Code></P>
     </Section>
   );
@@ -1173,8 +1284,10 @@ function CommonIssuesSection() {
 
       <H3>"Missing configuration" Error</H3>
       <List items={[
-        'Ensure .dev.vars exists with both CF_ACCOUNT_ID and CF_API_TOKEN',
-        'Restart the dev server after adding credentials',
+        'Configure local API keys: Go to Settings in the sidebar and enter your Cloudflare credentials',
+        'For local development: Ensure .dev.vars exists with both CF_ACCOUNT_ID and CF_API_TOKEN',
+        'For production: Either use local API keys (Settings) or set worker secrets via wrangler',
+        'Restart the dev server after adding credentials to .dev.vars',
       ]} />
 
       <H3>"Query execution failed"</H3>

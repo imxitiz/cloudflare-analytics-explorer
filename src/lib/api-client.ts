@@ -1,5 +1,7 @@
 // API Client for Cloudflare Analytics Engine
 
+import { STORAGE_KEYS, type ApiCredentials } from '@/hooks/use-local-storage';
+
 const API_BASE = '/api';
 
 export interface Dataset {
@@ -21,15 +23,39 @@ export interface QueryResult {
   message?: string;
 }
 
+// Get credentials from localStorage (non-reactive, for API calls)
+function getStoredCredentials(): ApiCredentials | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.apiCredentials);
+    if (stored) {
+      return JSON.parse(stored) as ApiCredentials;
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
 class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    // Get credentials from localStorage and add to headers if present
+    const credentials = getStoredCredentials();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (credentials?.accountId && credentials?.apiToken) {
+      headers['X-CF-Account-ID'] = credentials.accountId;
+      headers['X-CF-API-Token'] = credentials.apiToken;
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...headers,
         ...options.headers,
       },
     });
