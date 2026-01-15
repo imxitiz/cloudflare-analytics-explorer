@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ClipboardEvent } from "react";
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete02Icon, ArrowDown01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,9 @@ export function ColumnMappingEditor({
     description?: string
   ) => {
     const columnType = getColumnType(sourceColumn);
-    if (!columnType) return;
+    if (!columnType) {
+      return;
+    }
 
     const existing = mappings.find((m) => m.sourceColumn === sourceColumn);
 
@@ -71,6 +74,94 @@ export function ColumnMappingEditor({
 
   const toggleType = (type: string) => {
     setExpandedTypes((prev) => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  // When the user pastes comma-separated values into an input, distribute
+  // the values across this section's columns starting at the pasted column.
+  const handlePaste = async (
+    e: ClipboardEvent<HTMLInputElement>,
+    startColumn: string,
+    columns: string[],
+  ) => {
+    try {
+      // Safer clipboard access in case clipboardData isn't present on the synthetic event
+      const clipboardData =
+        e.clipboardData || (window as any).clipboardData;
+      let text = clipboardData?.getData?.("text") ?? "";
+
+      // Fallback: if the paste event didn't include clipboard text (some browsers/iframes),
+      // try the async Clipboard API as a best-effort fallback.
+      if (
+        !text &&
+        typeof navigator !== "undefined"
+      ) {
+        try {
+          text = await navigator.clipboard.readText();
+        } catch (_err) {
+          // Ignore permission errors — we'll just not handle as CSV
+          text = text || "";
+        }
+      }
+
+      // Only handle paste that contains a comma (CSV-like)
+      if (!text || !text.includes(",")) {
+        // Not a CSV-style paste — allow normal paste to proceed
+        return;
+      }
+
+      e.preventDefault();
+
+      // If our own debug string was accidentally copied (user copied console output),
+      // try to extract the actual pasted CSV payload from `text: "..."`.
+      let csvText = text;
+      const debugMatch = text.match(/text:\s*"([\s\S]*?)"/);
+      if (debugMatch?.[1]) {
+        csvText = debugMatch[1];
+      }
+
+      const values = csvText
+        .split(",")
+        .map((v: string) => v.trim())
+        .filter(Boolean);
+
+      if (values.length === 0) return;
+
+      const startIndex = columns.indexOf(startColumn);
+
+      // Merge all mapping updates and call onChange once to avoid overwriting
+      // earlier updates due to repeated synchronous calls using a stale snapshot.
+      const updatedByColumn: Record<string, ColumnMapping | undefined> = {};
+
+      // Seed with existing mappings for columns outside this section and within it
+      mappings.forEach((m) => {
+        updatedByColumn[m.sourceColumn] = { ...m };
+      });
+
+      values.forEach((val: string, idx: number) => {
+        const colIndex = startIndex + idx;
+        if (colIndex >= columns.length) return;
+        const srcColumn = columns[colIndex];
+        const columnType = getColumnType(srcColumn) as ColumnType;
+        updatedByColumn[srcColumn] = {
+          sourceColumn: srcColumn,
+          friendlyName: val,
+          columnType,
+        };
+      });
+
+      // Build final mappings array: keep original order but replace/append updated columns
+      const remaining = mappings.filter(
+        (m) => !columns.includes(m.sourceColumn),
+      );
+      const updatedInSection = columns
+        .map((c) => updatedByColumn[c])
+        .filter((m): m is ColumnMapping => !!m);
+
+      onChange([...remaining, ...updatedInSection]);
+    } catch (_err) {
+      // Let the native paste happen if anything goes wrong
+      return;
+    }
   };
 
   const renderColumnSection = (
@@ -106,14 +197,24 @@ export function ColumnMappingEditor({
                   key={column}
                   className="flex items-center gap-2 rounded bg-muted/30 px-2 py-1.5"
                 >
-                  <Badge className={cn('min-w-[70px] justify-center', COLUMN_TYPE_COLORS[type])}>
+                  <Badge
+                    className={cn(
+                      "min-w-17.5 justify-center",
+                      COLUMN_TYPE_COLORS[type],
+                    )}
+                  >
                     {column}
                   </Badge>
                   <span className="text-muted-foreground">→</span>
                   <Input
                     placeholder="Friendly name..."
-                    value={mapping?.friendlyName || ''}
-                    onChange={(e) => handleMappingChange(column, e.target.value)}
+                    value={mapping?.friendlyName || ""}
+                    onChange={(e) =>
+                      handleMappingChange(column, e.target.value)
+                    }
+                    onPaste={(e) =>
+                      handlePaste(e, column, columns)
+                    }
                     className="h-7 flex-1"
                   />
                   {mapping && (
@@ -123,7 +224,11 @@ export function ColumnMappingEditor({
                       onClick={() => handleRemoveMapping(column)}
                       className="size-7 text-muted-foreground hover:text-destructive"
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        size={14}
+                        strokeWidth={2}
+                      />
                     </Button>
                   )}
                 </div>
